@@ -3,7 +3,7 @@ Werkzeug==3.1.8
 itsdangerous==2.2.0
 Flask-Mail==0.10.0
 Pillow==11.1.0
-rembg==2.0.67
+rembg==2.0.80
 onnxruntime==1.20.1
 python-dotenv==1.0.1
 PyMySQL==1.1.1
