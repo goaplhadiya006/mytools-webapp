@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Account Verified{% endblock %}
+{% block content %}
+<div class="card center narrow">
+    <h2>✅ Your account verification is complete!</h2>
+    <p>You can now login to your account.</p>
+    <a href="{{ url_for('auth.login') }}" class="btn-primary">Go to Login</a>
+</div>
+{% endblock %}

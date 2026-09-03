@@ -1,0 +1,38 @@
+# Python
+
+**pycache**/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual Environment
+
+venv/
+.venv/
+env/
+
+# Environment variables
+
+.env
+
+# Uploaded files
+
+static/uploads/
+static/uploads/**
+static/processed/
+static/processed/**
+
+# Generated files
+
+*.log
+*.zip
+
+# IDE / Editor
+
+.vscode/
+.idea/
+
+# OS
+
+.DS_Store
+Thumbs.db

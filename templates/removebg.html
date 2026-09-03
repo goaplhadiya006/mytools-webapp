@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}RemoveBG Pro{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/removebg-tool.css') }}">
+{% endblock %}
+{% block page_body %}
+<div class="container">
+
+    <div class="header">
+        <div class="logo">RemoveBG <span>Pro</span></div>
+        <p>Remove image backgrounds instantly with AI</p>
+    </div>
+
+    <div class="tool-card">
+        <h2>Remove Image Background</h2>
+        <p class="subtitle">Upload up to 10 images and let AI remove the background automatically.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="error-message">⚠️ {{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form id="uploadForm" method="POST" action="{{ url_for('removebg.removebg_process') }}" enctype="multipart/form-data">
+
+            <div class="drop-zone" id="dropZone">
+                <div class="upload-icon">📤</div>
+                <h3>Drag &amp; Drop your image(s) here</h3>
+                <p>or</p>
+                <label for="imageInput" class="browse-btn">Browse Files</label>
+                <input type="file" id="imageInput" name="images" accept="image/png,image/jpeg,image/webp" multiple required>
+                <p class="file-info">PNG &bull; JPG &bull; JPEG &bull; WEBP<br>Up to 10 images &bull; Max 20MB total</p>
+            </div>
+
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-header">
+                    <span id="previewLabel">Selected Image</span>
+                    <button type="button" id="removeImageBtn" class="remove-image-btn">✕</button>
+                </div>
+                <img id="imagePreview" src="" alt="Selected Image">
+            </div>
+
+            <div class="background-editor" style="margin-top:20px;">
+                <h3>🎨 Background (optional)</h3>
+                <p>Leave as transparent, or choose a solid background color.</p>
+                <div class="color-options">
+                    <button type="button" class="color-option white" data-color="#ffffff">White</button>
+                    <button type="button" class="color-option black" data-color="#000000">Black</button>
+                    <button type="button" class="color-option red" data-color="#ff0000">Red</button>
+                    <button type="button" class="color-option blue" data-color="#0000ff">Blue</button>
+                    <button type="button" class="color-option green" data-color="#00aa00">Green</button>
+                    <button type="button" id="transparentBtn" data-color="">Transparent</button>
+                </div>
+                <div class="custom-color">
+                    <label for="customColor">Custom Color</label>
+                    <input type="color" id="customColor" value="#ffffff">
+                </div>
+                <input type="hidden" name="bg_color" id="bg_color" value="">
+            </div>
+
+            <button type="submit" id="removeBtn" class="remove-btn">✨ Remove Background</button>
+        </form>
+
+        <div class="processing" id="processing">
+            <div class="loader"></div>
+            <h3>Removing Background...</h3>
+            <p>Please wait while AI processes your image(s). This can take a little longer the first time.</p>
+        </div>
+
+        {% if results %}
+        <div class="result">
+            <div class="result-title"><span class="success-icon">✓</span><h2>Background Removed!</h2></div>
+            <p class="result-subtitle">Compare your original image with the processed image.</p>
+
+            {% for r in results %}
+                {% if r.success %}
+                <div class="comparison" style="margin-bottom:26px;">
+                    <div class="comparison-card">
+                        <div class="comparison-label">BEFORE</div>
+                        <div class="comparison-image">
+                            <img src="{{ url_for('removebg.removebg_file', batch_id=batch_id, filename=r.source_filename) }}" alt="Original">
+                        </div>
+                    </div>
+                    <div class="comparison-card">
+                        <div class="comparison-label after-label">AFTER</div>
+                        <div class="comparison-image transparent-bg">
+                            <img src="{{ url_for('removebg.removebg_file', batch_id=batch_id, filename=r.filename) }}" alt="Processed">
+                        </div>
+                    </div>
+                </div>
+                <p style="text-align:center; margin-bottom:10px; color:var(--color-text-muted, #6b7280);">{{ r.original_name }} &middot; {{ r.size }}</p>
+                <a href="{{ url_for('removebg.removebg_file', batch_id=batch_id, filename=r.filename) }}" class="download-btn" download>📥 Download PNG</a>
+                {% else %}
+                <div class="error-message">⚠️ {{ r.filename }}: {{ r.error }}</div>
+                {% endif %}
+            {% endfor %}
+
+            {% if zip_name %}
+            <a href="{{ url_for('removebg.removebg_download_zip', batch_id=batch_id) }}" class="download-btn" style="margin-top:16px;">⬇️ Download All as ZIP</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="features">
+        <div class="feature"><span>⚡</span><h3>Fast Processing</h3><p>AI-powered background removal</p></div>
+        <div class="feature"><span>🔒</span><h3>Secure</h3><p>Your images are processed privately, only visible to you</p></div>
+        <div class="feature"><span>🖼️</span><h3>High Quality</h3><p>Get high quality transparent PNGs</p></div>
+    </div>
+
+    <footer><p>&copy; 2026 RemoveBG Pro</p></footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/removebg-tool.js') }}?v=2"></script>
+{% endblock %}

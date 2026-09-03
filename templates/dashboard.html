@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h2>Welcome, {{ user.first_name }} 👋</h2>
+<p class="muted">Choose a tool to get started.</p>
+
+<div class="tool-grid">
+    <a class="tool-card" href="{{ url_for('resizer.resizer_page') }}">
+        <h3>🖼 Image Resizer - Compressor</h3>
+        <p>Resize and compress your images with custom quality and format.</p>
+    </a>
+    <a class="tool-card" href="{{ url_for('removebg.removebg_page') }}">
+        <h3>✂️ RemoveBG Pro</h3>
+        <p>Remove image backgrounds automatically and apply a solid color.</p>
+    </a>
+</div>
+
+<div class="dashboard-links">
+    <a href="{{ url_for('history.history_page') }}">📜 View History</a>
+    <a href="{{ url_for('profile.profile_page') }}">👤 Profile Settings</a>
+</div>
+{% endblock %}

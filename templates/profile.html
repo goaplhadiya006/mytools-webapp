@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<h2>Profile</h2>
+
+<div class="card">
+    <h3>Profile Picture</h3>
+    <div class="profile-pic-row">
+        {% if user.profile_image %}
+            <img class="profile-pic" src="{{ url_for('static', filename='uploads/profile_pics/' + user.profile_image) }}" alt="Profile picture">
+        {% else %}
+            <div class="profile-pic placeholder">{{ user.first_name[0]|upper }}</div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('profile.upload_picture') }}" enctype="multipart/form-data" class="inline-form">
+            <input type="file" name="profile_image" accept=".png,.jpg,.jpeg,.webp">
+            <button type="submit" class="btn-secondary">Upload</button>
+        </form>
+
+        {% if user.profile_image %}
+        <form method="POST" action="{{ url_for('profile.remove_picture') }}" class="inline-form">
+            <button type="submit" class="btn-danger">Remove</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h3>Account Details</h3>
+    <form method="POST" action="{{ url_for('profile.update_profile') }}" novalidate id="profileForm">
+        <div class="form-group">
+            <label for="first_name">First Name</label>
+            <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}">
+            <span class="error-text">{{ errors.first_name if errors else '' }}</span>
+        </div>
+        <div class="form-group">
+            <label for="last_name">Last Name</label>
+            <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}">
+            <span class="error-text">{{ errors.last_name if errors else '' }}</span>
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="text" value="{{ user.email }}" disabled>
+        </div>
+        <button type="submit" class="btn-primary">Save Changes</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Reset Password</h3>
+    <form method="POST" action="{{ url_for('profile.change_password') }}" novalidate id="pwForm">
+        <div class="form-group">
+            <label for="old_password">Old Password</label>
+            <input type="password" id="old_password" name="old_password">
+            <span class="error-text">{{ pw_errors.old_password if pw_errors else '' }}</span>
+        </div>
+        <div class="form-group">
+            <label for="new_password">New Password</label>
+            <input type="password" id="new_password" name="new_password">
+            <span class="error-text">{{ pw_errors.new_password if pw_errors else '' }}</span>
+            <small class="hint">Min 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character.</small>
+        </div>
+        <div class="form-group">
+            <label for="confirm_password">Confirm New Password</label>
+            <input type="password" id="confirm_password" name="confirm_password">
+            <span class="error-text">{{ pw_errors.confirm_password if pw_errors else '' }}</span>
+        </div>
+        <button type="submit" class="btn-primary">Change Password</button>
+    </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/validate.js') }}"></script>
+<script>
+    attachResetPasswordValidation('pwForm', 'new_password', 'confirm_password');
+</script>
+{% endblock %}

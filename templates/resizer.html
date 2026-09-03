@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Image Resizer & Compressor{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/resizer-tool.css') }}">
+{% endblock %}
+{% block page_body %}
+<div class="container">
+
+    <div class="theme-toggle">
+        <button type="button" id="themeToggle">🌙 Dark Mode</button>
+    </div>
+
+    <div class="header">
+        <div class="logo">🖼️</div>
+        <h1>Image Resizer &amp; Compressor</h1>
+        <p>Resize, compress and convert your images easily</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="error-message"><span class="error-icon">⚠️</span>
+                <div class="error-content"><strong>{{ 'Done' if category == 'success' else 'Something went wrong' }}</strong><p>{{ message }}</p></div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form id="resizerForm" method="POST" action="{{ url_for('resizer.resizer_process') }}" enctype="multipart/form-data">
+
+        <div id="dropZone" class="drop-zone">
+            <div class="upload-icon">📁</div>
+            <h3>Drag &amp; Drop your images here</h3>
+            <p>or</p>
+            <label for="imageInput" class="choose-btn">Choose Images</label>
+            <input type="file" name="images" id="imageInput" accept="image/jpeg,image/png,image/webp" multiple required>
+            <p class="supported">JPG, PNG and WEBP &bull; Up to 10 images &bull; Max 20MB per upload</p>
+        </div>
+
+        <div id="previewBox" class="preview-box">
+            <img id="previewImage" alt="Image Preview">
+            <div class="image-info">
+                <p id="fileName"></p>
+                <p id="originalSize"></p>
+            </div>
+            <button type="button" id="removeImage" class="remove-btn">Remove Images</button>
+            <button type="button" id="clearAll" class="clear-all-btn">🔄 Clear All</button>
+        </div>
+
+        <div class="settings">
+            <div class="input-group">
+                <label for="width">Width (px)</label>
+                <input type="number" name="width" id="width" placeholder="Example: 800" min="1" max="4000">
+            </div>
+            <div class="input-group">
+                <label for="height">Height (px)</label>
+                <input type="number" name="height" id="height" placeholder="Example: 600" min="1" max="4000">
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="aspectRatio" checked>
+                <label for="aspectRatio">Maintain Aspect Ratio</label>
+            </div>
+            <div class="input-group">
+                <label>Compression Quality</label>
+                <div class="quality-control">
+                    <input type="range" name="quality" id="quality" min="10" max="100" value="80">
+                    <span id="qualityValue">80%</span>
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="format">Output Format</label>
+                <select name="format" id="format">
+                    <option value="JPEG">JPG</option>
+                    <option value="PNG">PNG</option>
+                    <option value="WEBP">WEBP</option>
+                </select>
+            </div>
+            <button type="submit" class="process-btn">🚀 Resize &amp; Compress Images</button>
+        </div>
+    </form>
+
+    {% if results %}
+    <div class="result" id="resultSection">
+        <div class="success-title"><span>✓</span><h2>Images Processed</h2></div>
+
+        {% if results %}
+        <div class="comparison-section">
+            <h2>🖼️ Results</h2>
+            {% for r in results %}
+            <div class="comparison-card">
+                {% if r.success %}
+                <div class="comparison-box">
+                    <h3>{{ r.original_name }}</h3>
+                    <img src="{{ url_for('resizer.resizer_file', batch_id=batch_id, filename=r.filename) }}" alt="{{ r.original_name }}">
+                    <p>{{ r.size }} &middot; {{ r.dimensions }}</p>
+                    <a href="{{ url_for('resizer.resizer_file', batch_id=batch_id, filename=r.filename) }}" class="individual-download" download>⬇️ Download Image</a>
+                </div>
+                {% else %}
+                <div class="comparison-box">
+                    <h3>{{ r.filename }}</h3>
+                    <p style="color:#dc2626;">{{ r.error }}</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="result-item"><span>Images Processed</span><strong>{{ file_count }}</strong></div>
+        {% if saved_percent %}
+        <div class="result-item saved"><span>Space Saved</span><strong>{{ saved_percent }}%</strong></div>
+        {% endif %}
+
+        {% if zip_name %}
+        <a href="{{ url_for('resizer.resizer_download_zip', batch_id=batch_id) }}" class="download-btn">⬇️ Download All as ZIP</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/resizer-tool.js') }}?v=2"></script>
+{% endblock %}

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}My Tools{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="{{ url_for('dashboard') if session.get('user_id') else url_for('auth.login') }}" class="brand">🛠 MyTools</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" type="button">&#9776;</button>
+    <div class="nav-links" id="navLinks">
+        {% if session.get('user_id') %}
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('resizer.resizer_page') }}">Resizer</a>
+            <a href="{{ url_for('removebg.removebg_page') }}">RemoveBG</a>
+            <a href="{{ url_for('history.history_page') }}">History</a>
+            <a href="{{ url_for('profile.profile_page') }}">Profile</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('auth.login') }}">Login</a>
+            <a href="{{ url_for('auth.signup') }}">Sign Up</a>
+        {% endif %}
+    </div>
+</nav>
+
+{% block page_body %}
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</div>
+{% endblock %}
+
+<script>
+    var navToggle = document.getElementById("navToggle");
+    var navLinks = document.getElementById("navLinks");
+    if (navToggle && navLinks) {
+        navToggle.addEventListener("click", function () {
+            navLinks.classList.toggle("open");
+        });
+    }
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

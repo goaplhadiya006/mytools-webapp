@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+{% block content %}
+<div class="history-header">
+    <h2>📜 History</h2>
+    {% if items %}
+    <form method="POST" action="{{ url_for('history.clear_all') }}" onsubmit="return confirm('Delete ALL history? This cannot be undone.');">
+        <button type="submit" class="btn-danger">Delete All</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if not items %}
+<p class="muted">No history yet. Process an image to see it here.</p>
+{% else %}
+<div class="history-grid">
+    {% for item in items %}
+    <div class="history-card">
+        {% if item.exists %}
+            <img src="{{ item.url }}" alt="{{ item.processed_filename }}">
+        {% else %}
+            <div class="missing-file">File expired / removed</div>
+        {% endif %}
+        <div class="history-meta">
+            <strong>{{ 'Image Resizer' if item.tool == 'resizer' else 'RemoveBG' }}</strong>
+            <span>{{ item.display_size }}</span>
+            <span class="muted small">{{ item.created_at }}</span>
+        </div>
+        <form method="POST" action="{{ url_for('history.delete_one', record_id=item.id) }}" onsubmit="return confirm('Delete this image?');">
+            <button type="submit" class="btn-danger small">Delete</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
