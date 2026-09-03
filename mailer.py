@@ -87,8 +87,14 @@ def is_mail_configured():
 def send_email(mail, to_email, subject, html_content):
     api_key = os.environ.get("RESEND_API_KEY")
 
+    print("========== RESEND EMAIL DEBUG ==========")
+    print("Recipient:", to_email)
+    print("API KEY CONFIGURED:", bool(api_key))
+    print("Sender:", os.environ.get("MAIL_DEFAULT_SENDER"))
+    print("========================================")
+
     if not api_key:
-        print("ERROR: RESEND_API_KEY is not configured.")
+        print("ERROR: RESEND_API_KEY is NOT configured.")
         return False
 
     sender = (
@@ -114,18 +120,19 @@ def send_email(mail, to_email, subject, html_content):
             timeout=30
         )
 
-        if response.status_code in (200, 201):
-            print("Email sent successfully.")
-            print(response.text)
-            return True
-
-        print("Resend email error:")
+        print("========== RESEND RESPONSE ==========")
         print("Status:", response.status_code)
         print("Response:", response.text)
+        print("=====================================")
 
+        if response.status_code in (200, 201):
+            print("Email sent successfully.")
+            return True
+
+        print("Resend email error.")
         return False
 
     except requests.RequestException as e:
         print("Resend API connection error:")
-        print(e)
+        print(str(e))
         return False
