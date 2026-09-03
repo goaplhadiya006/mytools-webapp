@@ -7,3 +7,4 @@ rembg==2.0.81
 onnxruntime==1.29.0
 python-dotenv==1.0.1
 PyMySQL==1.1.1
+gunicorn==23.0.0
