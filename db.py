@@ -30,15 +30,16 @@ def get_connection(with_db=True):
     like it did with sqlite3.Row).
     """
     return pymysql.connect(
-        host=Config.MYSQL_HOST,
-        port=Config.MYSQL_PORT,
-        user=Config.MYSQL_USER,
-        password=Config.MYSQL_PASSWORD,
-        database=Config.MYSQL_DATABASE if with_db else None,
-        charset="utf8mb4",
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=False
-    )
+    host=Config.MYSQL_HOST,
+    port=Config.MYSQL_PORT,
+    user=Config.MYSQL_USER,
+    password=Config.MYSQL_PASSWORD,
+    database=Config.MYSQL_DATABASE if with_db else None,
+    charset="utf8mb4",
+    cursorclass=pymysql.cursors.DictCursor,
+    autocommit=False,
+    ssl={"ssl": {}}
+)
 
 
 def init_db():
