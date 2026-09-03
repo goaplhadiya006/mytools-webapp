@@ -32,8 +32,8 @@ from config import Config
 
 removebg_bp = Blueprint("removebg", __name__)
 
-MAX_FILES_PER_REQUEST = 10
-MAX_PROCESS_DIMENSION = 1500  # same as standalone tool
+MAX_FILES_PER_REQUEST = 3
+MAX_PROCESS_DIMENSION = 1024  # same as standalone tool
 
 _session = None  # rembg session, lazy-loaded (heavy AI model)
 
