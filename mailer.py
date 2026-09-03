@@ -1,81 +1,47 @@
-"""
-==================================================================
- MAILER.PY
- Email verification / password reset token banavva ane mail
- mokalva mate ni utility.
-
- IMPORTANT (Gujarati):
- Real email mokalva mate tamare .env file ma tamara Gmail (ke
- bija) SMTP na MAIL_USERNAME / MAIL_PASSWORD nakhva padshe
- (.env.example jovo). Jya sudhi e set nathi karyu tya sudhi,
- app link ne screen upar j batavshe (dev/testing mate) - flow
- tuti nahi jaay.
-==================================================================
-"""
-
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
-from flask import current_app, url_for
-from flask_mail import Message
-
-from config import Config
+import os
+import requests
 
 
-def _serializer():
-    return URLSafeTimedSerializer(Config.SECRET_KEY)
+RESEND_API_URL = "https://api.resend.com/emails"
 
 
-def generate_token(email, salt):
-    return _serializer().dumps(email, salt=salt)
+def send_email(to_email, subject, html_content):
+    api_key = os.environ.get("RESEND_API_KEY")
 
-
-def confirm_token(token, salt, max_age):
-    try:
-        email = _serializer().loads(token, salt=salt, max_age=max_age)
-    except SignatureExpired:
-        return None, "expired"
-    except BadSignature:
-        return None, "invalid"
-    return email, None
-
-
-def is_mail_configured():
-    return bool(Config.MAIL_USERNAME and Config.MAIL_PASSWORD)
-
-
-def send_email(mail, to, subject, html_body):
-    """
-    Try to send a real email. Returns True if actually sent.
-    If mail is not configured (or sending fails), returns False so
-    the caller can fall back to showing the link on screen.
-    """
-    if not is_mail_configured():
+    if not api_key:
+        print("ERROR: RESEND_API_KEY is not configured.")
         return False
 
+    sender = os.environ.get(
+        "MAIL_DEFAULT_SENDER",
+        "onboarding@resend.dev"
+    )
+
     try:
-        msg = Message(
-            subject=subject,
-            recipients=[to],
-            html=html_body,
-            sender=Config.MAIL_DEFAULT_SENDER
+        response = requests.post(
+            RESEND_API_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": sender,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_content
+            },
+            timeout=30
         )
-        mail.send(msg)
-        return True
-    except Exception as exc:
-        current_app.logger.warning("Mail send failed: %s", exc)
+
+        if response.status_code in (200, 201):
+            print("Email sent successfully.")
+            return True
+
+        print("Email sending failed:")
+        print(response.status_code)
+        print(response.text)
         return False
 
-
-def build_verification_link(email):
-    token = generate_token(email, salt="email-verify")
-    if Config.APP_BASE_URL:
-        path = url_for("auth.verify_email", token=token)
-        return Config.APP_BASE_URL + path
-    return url_for("auth.verify_email", token=token, _external=True)
-
-
-def build_reset_link(email):
-    token = generate_token(email, salt="password-reset")
-    if Config.APP_BASE_URL:
-        path = url_for("auth.reset_password", token=token)
-        return Config.APP_BASE_URL + path
-    return url_for("auth.reset_password", token=token, _external=True)
+    except requests.RequestException as e:
+        print("Email API error:", e)
+        return False
