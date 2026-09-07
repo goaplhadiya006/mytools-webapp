@@ -1,14 +1,3 @@
-"""
-==================================================================
- AUTH.PY
- Signup, Email Verification, Login, Logout,
- Forgot Password, Reset Password - badhu ahiya.
-
- Server-side validation j final validation che (JS client-side
- mate che, pan security mate server upar j re-check thay che).
-==================================================================
-"""
-
 import re
 from functools import wraps
 
@@ -104,31 +93,54 @@ def signup():
     password = request.form.get("password") or ""
     confirm_password = request.form.get("confirm_password") or ""
 
-    errors = validate_signup(first_name, last_name, email, password, confirm_password)
+    errors = validate_signup(
+        first_name,
+        last_name,
+        email,
+        password,
+        confirm_password
+    )
 
     if not errors and db.get_user_by_email(email):
         errors["email"] = "This email is already registered."
 
     if errors:
         return render_template(
-            "signup.html", errors=errors,
-            first_name=first_name, last_name=last_name, email=email
+            "signup.html",
+            errors=errors,
+            first_name=first_name,
+            last_name=last_name,
+            email=email
         ), 400
 
     password_hash = generate_password_hash(password)
-    user_id = db.create_user(first_name, last_name, email, password_hash)
+
+    user_id = db.create_user(
+        first_name,
+        last_name,
+        email,
+        password_hash
+    )
 
     link = build_verification_link(email)
-    html = render_template("email_verify.html", first_name=first_name, link=link)
-    sent = send_email(current_app.extensions["mail"], email,
-                       "Verify your account", html)
+
+    html = render_template(
+        "email_verify.html",
+        first_name=first_name,
+        link=link
+    )
+
+    sent = send_email(
+        current_app.extensions["mail"],
+        email,
+        "Verify your account",
+        html
+    )
 
     return render_template(
         "verify_notice.html",
         email=email,
         sent=sent,
-        # Link ne hammesha batavay che (fallback), kem ke real inbox ma
-        # delay thai shake ke spam ma jai shake - user atki na jay etle.
         dev_link=link
     )
 
@@ -140,27 +152,40 @@ def signup():
 @auth_bp.route("/verify-email/<token>")
 def verify_email(token):
     email, error = confirm_token(
-        token, salt="email-verify",
+        token,
+        salt="email-verify",
         max_age=Config.EMAIL_VERIFY_EXPIRY_SECONDS
     )
 
     if error == "expired":
-        flash("Verification link has expired. Please sign up again or request a new link.", "error")
+        flash(
+            "Verification link has expired. Please sign up again or request a new link.",
+            "error"
+        )
         return redirect(url_for("auth.login"))
 
     if error == "invalid" or not email:
-        flash("Invalid verification link.", "error")
+        flash(
+            "Invalid verification link.",
+            "error"
+        )
         return redirect(url_for("auth.login"))
 
     user = db.get_user_by_email(email)
+
     if not user:
-        flash("Account not found.", "error")
+        flash(
+            "Account not found.",
+            "error"
+        )
         return redirect(url_for("auth.signup"))
 
     if not user["is_verified"]:
         db.mark_user_verified(user["id"])
 
-    return render_template("verify_success.html")
+    return render_template(
+        "verify_success.html"
+    )
 
 
 # =========================================================
@@ -169,90 +194,102 @@ def verify_email(token):
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    # Requirement: agar user already login thayelo hoy, to login
-    # page pachu dekhadvu nahi - seedhu dashboard par mokli devu.
-    # Login karyu, koi bija tab/URL thi /login kholva ni koshish
-    # karshe to pan e dashboard par j jashe. Logout karya pachi
-    # session clear thai jashe, etle tyare login page barabar
-    # khulshe.
+
     if session.get("user_id"):
         return redirect(url_for("dashboard"))
 
     if request.method == "GET":
         return render_template("login.html")
 
-    email = (request.form.get("email") or "").strip().lower()
-    password = request.form.get("password") or ""
+    email = (
+        request.form.get("email") or ""
+    ).strip().lower()
+
+    password = (
+        request.form.get("password") or ""
+    )
 
     errors = {}
+
     user = db.get_user_by_email(email)
 
-    if not user or not check_password_hash(user["password_hash"], password):
+    if not user or not check_password_hash(
+        user["password_hash"],
+        password
+    ):
         errors["general"] = "Invalid email or password."
-        return render_template("login.html", errors=errors, email=email), 400
+
+        return render_template(
+            "login.html",
+            errors=errors,
+            email=email
+        ), 400
 
     if not user["is_verified"]:
-        errors["general"] = "Please verify your email before logging in."
-        return render_template("login.html", errors=errors, email=email), 400
+        errors["general"] = (
+            "Please verify your email before logging in."
+        )
+
+        return render_template(
+            "login.html",
+            errors=errors,
+            email=email
+        ), 400
 
     session["user_id"] = user["id"]
     session["user_name"] = user["first_name"]
-    flash("Logged in successfully.", "success")
-    return redirect(url_for("dashboard"))
+
+    flash(
+        "Logged in successfully.",
+        "success"
+    )
+
+    return redirect(
+        url_for("dashboard")
+    )
 
 
 @auth_bp.route("/logout")
 def logout():
+
     session.clear()
-    flash("Logged out.", "success")
-    return redirect(url_for("auth.login"))
+
+    flash(
+        "Logged out.",
+        "success"
+    )
+
+    return redirect(
+        url_for("auth.login")
+    )
 
 
 # =========================================================
 # FORGOT PASSWORD
 # =========================================================
 
-@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+@auth_bp.route(
+    "/forgot-password",
+    methods=["GET", "POST"]
+)
 def forgot_password():
+
     if request.method == "GET":
-        return render_template("forgot_password.html")
-
-    email = (request.form.get("email") or "").strip().lower()
-
-    if not email or not EMAIL_REGEX.match(email):
         return render_template(
-            "forgot_password.html",
-            errors={"email": "Please enter a valid email address."},
-            email=email
-        ), 400
-
-    user = db.get_user_by_email(email)
-
-    # Security: don't reveal whether the email exists or not.
-    dev_link = None
-    sent = False
-
-    if user:
-        link = build_reset_link(email)
-        html = render_template(
-            "email_reset.html", first_name=user["first_name"], link=link
+            "forgot_password.html"
         )
-        sent = send_email(current_app.extensions["mail"], email,
-                           "Reset your password", html)
-        # Link ne hammesha fallback tarike batavay che (delay/spam
-        # thai shake tevi situation mate) - user atki na jay etle.
-        dev_link = link
-@auth_bp.route("/forgot-password", methods=["GET", "POST"])
-def forgot_password():
-    if request.method == "GET":
-        return render_template("forgot_password.html")
 
-    email = (request.form.get("email") or "").strip().lower()
+    email = (
+        request.form.get("email") or ""
+    ).strip().lower()
 
     if not email or not EMAIL_REGEX.match(email):
+
         return render_template(
             "forgot_password.html",
-            errors={"email": "Please enter a valid email address."},
+            errors={
+                "email": "Please enter a valid email address."
+            },
             email=email
         ), 400
 
@@ -262,6 +299,7 @@ def forgot_password():
     sent = False
 
     if user:
+
         link = build_reset_link(email)
 
         html = render_template(
@@ -277,52 +315,111 @@ def forgot_password():
             html
         )
 
+    # No reset link or reset message is shown on the website.
     return render_template(
         "forgot_password_sent.html"
     )
+
 
 # =========================================================
 # RESET PASSWORD (from email link)
 # =========================================================
 
-@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+@auth_bp.route(
+    "/reset-password/<token>",
+    methods=["GET", "POST"]
+)
 def reset_password(token):
+
     email, error = confirm_token(
-        token, salt="password-reset",
+        token,
+        salt="password-reset",
         max_age=Config.PASSWORD_RESET_EXPIRY_SECONDS
     )
 
     if error == "expired":
-        flash("Reset link has expired. Please request a new one.", "error")
-        return redirect(url_for("auth.forgot_password"))
+
+        flash(
+            "Reset link has expired. Please request a new one.",
+            "error"
+        )
+
+        return redirect(
+            url_for("auth.forgot_password")
+        )
 
     if error == "invalid" or not email:
-        flash("Invalid reset link.", "error")
-        return redirect(url_for("auth.forgot_password"))
+
+        flash(
+            "Invalid reset link.",
+            "error"
+        )
+
+        return redirect(
+            url_for("auth.forgot_password")
+        )
 
     user = db.get_user_by_email(email)
+
     if not user:
-        flash("Account not found.", "error")
-        return redirect(url_for("auth.forgot_password"))
+
+        flash(
+            "Account not found.",
+            "error"
+        )
+
+        return redirect(
+            url_for("auth.forgot_password")
+        )
 
     if request.method == "GET":
-        return render_template("reset_password.html", token=token)
 
-    new_password = request.form.get("new_password") or ""
-    confirm_password = request.form.get("confirm_password") or ""
+        return render_template(
+            "reset_password.html",
+            token=token
+        )
+
+    new_password = (
+        request.form.get("new_password") or ""
+    )
+
+    confirm_password = (
+        request.form.get("confirm_password") or ""
+    )
 
     errors = {}
+
     if not PASSWORD_REGEX.match(new_password):
+
         errors["new_password"] = (
             "Password must be 8+ characters and include uppercase, "
             "lowercase, number and special character."
         )
+
     if new_password != confirm_password:
-        errors["confirm_password"] = "Passwords do not match."
+
+        errors["confirm_password"] = (
+            "Passwords do not match."
+        )
 
     if errors:
-        return render_template("reset_password.html", token=token, errors=errors), 400
 
-    db.update_user_password(user["id"], generate_password_hash(new_password))
-    flash("Password has been reset. Please login with your new password.", "success")
-    return redirect(url_for("auth.login"))
+        return render_template(
+            "reset_password.html",
+            token=token,
+            errors=errors
+        ), 400
+
+    db.update_user_password(
+        user["id"],
+        generate_password_hash(new_password)
+    )
+
+    flash(
+        "Password has been reset. Please login with your new password.",
+        "success"
+    )
+
+    return redirect(
+        url_for("auth.login")
+    )
