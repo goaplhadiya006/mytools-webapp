@@ -17,6 +17,8 @@
 """
 
 import os
+import os
+os.environ.setdefault("NUMBA_DISABLE_JIT", "1")
 import uuid
 import zipfile
 
@@ -40,9 +42,11 @@ _session = None  # rembg session, lazy-loaded (heavy AI model)
 
 def _get_session():
     global _session
+
     if _session is None:
         from rembg import new_session
-        _session = new_session("u2net")
+        _session = new_session("u2netp")
+
     return _session
 
 
