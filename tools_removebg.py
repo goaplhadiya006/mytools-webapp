@@ -5,7 +5,7 @@ import uuid
 import zipfile
 
 from flask import (
-    Blueprint, render_template, request, send_from_directory, flash
+    Blueprint, render_template, request, send_from_directory, send_file, flash
 )
 from PIL import Image
 from werkzeug.utils import secure_filename
@@ -416,17 +416,37 @@ def removebg_file(batch_id, filename):
         filename
     )
 
+    # Log requested file path.
+    print(
+        f"[RemoveBG] File request: {file_path}"
+    )
+
     # Check whether requested file exists.
     if not os.path.isfile(file_path):
+        print(
+            f"[RemoveBG] FILE NOT FOUND: {file_path}"
+        )
         return "Image file not found.", 404
 
+    # Check actual file size.
+    file_size = os.path.getsize(
+        file_path
+    )
+
+    print(
+        f"[RemoveBG] File size: {file_size} bytes"
+    )
+
     # Check whether requested file is empty.
-    if os.path.getsize(file_path) <= 0:
+    if file_size <= 0:
+        print(
+            f"[RemoveBG] EMPTY FILE: {file_path}"
+        )
         return "Image file is empty.", 500
 
-    return send_from_directory(
-        folder,
-        filename,
+    # Serve the actual file directly.
+    return send_file(
+        file_path,
         as_attachment=False
     )
 
