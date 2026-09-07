@@ -106,23 +106,43 @@ def _remove_background_single(input_path, output_path, bg_color=None):
         if max(w, h) > MAX_PROCESS_DIMENSION:
             scale = MAX_PROCESS_DIMENSION / max(w, h)
             processing_image = image.resize(
-                (int(w * scale), int(h * scale)), Image.Resampling.LANCZOS
+                (int(w * scale), int(h * scale)),
+                Image.Resampling.LANCZOS
             )
         else:
             processing_image = image.copy()
 
-        output_image = remove(processing_image, session=_get_session()).convert("RGBA")
+        session = _get_session()
+
+        output_image = remove(
+            processing_image,
+            session=session
+        ).convert("RGBA")
 
         if bg_color and _valid_hex_color(bg_color):
-            background = Image.new("RGBA", output_image.size, bg_color)
-            composited = Image.alpha_composite(background, output_image)
+            background = Image.new(
+                "RGBA",
+                output_image.size,
+                bg_color
+            )
+
+            composited = Image.alpha_composite(
+                background,
+                output_image
+            )
+
             output_image.close()
             output_image = composited
 
         output_image.save(output_path, "PNG")
 
     finally:
-        for img in (output_image, processing_image, image, background):
+        for img in (
+            output_image,
+            processing_image,
+            image,
+            background
+        ):
             try:
                 if img is not None:
                     img.close()
