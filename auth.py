@@ -242,9 +242,44 @@ def forgot_password():
         # Link ne hammesha fallback tarike batavay che (delay/spam
         # thai shake tevi situation mate) - user atki na jay etle.
         dev_link = link
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "GET":
+        return render_template("forgot_password.html")
 
-    return render_template("forgot_password_sent.html", sent=sent, dev_link=dev_link)
+    email = (request.form.get("email") or "").strip().lower()
 
+    if not email or not EMAIL_REGEX.match(email):
+        return render_template(
+            "forgot_password.html",
+            errors={"email": "Please enter a valid email address."},
+            email=email
+        ), 400
+
+    user = db.get_user_by_email(email)
+
+    # Security: don't reveal whether the email exists or not.
+    sent = False
+
+    if user:
+        link = build_reset_link(email)
+
+        html = render_template(
+            "email_reset.html",
+            first_name=user["first_name"],
+            link=link
+        )
+
+        sent = send_email(
+            current_app.extensions["mail"],
+            email,
+            "Reset your password",
+            html
+        )
+
+    return render_template(
+        "forgot_password_sent.html"
+    )
 
 # =========================================================
 # RESET PASSWORD (from email link)
