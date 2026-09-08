@@ -36,3 +36,8 @@ static/processed/**
 
 .DS_Store
 Thumbs.db
+
+
+credentials.json
+token.json
+.env

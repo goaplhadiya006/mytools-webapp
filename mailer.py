@@ -1,8 +1,29 @@
 import os
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-import requests
+import json
+import base64
+
+from email.mime.text import MIMEText
+
+from itsdangerous import (
+    URLSafeTimedSerializer,
+    BadSignature,
+    SignatureExpired
+)
+
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
 
 from config import Config
+
+
+# =========================================================
+# GMAIL API
+# =========================================================
+
+SCOPES = [
+    "https://www.googleapis.com/auth/gmail.send"
+]
 
 
 # =========================================================
@@ -18,7 +39,10 @@ def _serializer():
 # =========================================================
 
 def _make_token(email, salt):
-    return _serializer().dumps(email, salt=salt)
+    return _serializer().dumps(
+        email,
+        salt=salt
+    )
 
 
 def confirm_token(token, salt, max_age):
@@ -28,6 +52,7 @@ def confirm_token(token, salt, max_age):
             salt=salt,
             max_age=max_age
         )
+
         return email, None
 
     except SignatureExpired:
@@ -45,7 +70,10 @@ def confirm_token(token, salt, max_age):
 # =========================================================
 
 def build_verification_link(email):
-    token = _make_token(email, "email-verify")
+    token = _make_token(
+        email,
+        "email-verify"
+    )
 
     base_url = (
         os.environ.get("APP_BASE_URL")
@@ -61,7 +89,10 @@ def build_verification_link(email):
 # =========================================================
 
 def build_reset_link(email):
-    token = _make_token(email, "password-reset")
+    token = _make_token(
+        email,
+        "password-reset"
+    )
 
     base_url = (
         os.environ.get("APP_BASE_URL")
@@ -77,62 +108,295 @@ def build_reset_link(email):
 # =========================================================
 
 def is_mail_configured():
-    return bool(os.environ.get("RESEND_API_KEY"))
 
+    # Local development:
+    # token.json must exist.
 
-# =========================================================
-# SEND EMAIL USING RESEND API
-# =========================================================
-
-def send_email(mail, to_email, subject, html_content):
-    api_key = os.environ.get("RESEND_API_KEY")
-
-    print("========== RESEND EMAIL DEBUG ==========")
-    print("Recipient:", to_email)
-    print("API KEY CONFIGURED:", bool(api_key))
-    print("Sender:", os.environ.get("MAIL_DEFAULT_SENDER"))
-    print("========================================")
-
-    if not api_key:
-        print("ERROR: RESEND_API_KEY is NOT configured.")
-        return False
-
-    sender = (
-        os.environ.get("MAIL_DEFAULT_SENDER")
-        or "onboarding@resend.dev"
+    local_token = getattr(
+        Config,
+        "GMAIL_TOKEN_FILE",
+        "token.json"
     )
 
-    payload = {
-        "from": sender,
-        "to": [to_email],
-        "subject": subject,
-        "html": html_content
-    }
+    if os.path.exists(local_token):
+        return True
 
-    try:
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
-            json=payload,
-            timeout=30
+    # Render / production:
+    # Gmail token can be stored in environment variable.
+
+    return bool(
+        os.environ.get("GMAIL_TOKEN_JSON")
+    )
+
+
+# =========================================================
+# LOAD GMAIL CREDENTIALS
+# =========================================================
+
+def _load_gmail_credentials():
+
+    token_json = os.environ.get(
+        "GMAIL_TOKEN_JSON"
+    )
+
+    # -----------------------------------------------------
+    # Render / Production
+    # -----------------------------------------------------
+
+    if token_json:
+
+        try:
+
+            token_data = json.loads(
+                token_json
+            )
+
+            creds = Credentials.from_authorized_user_info(
+                token_data,
+                SCOPES
+            )
+
+            print(
+                "Gmail credentials loaded from environment."
+            )
+
+        except Exception as e:
+
+            print(
+                "ERROR: Invalid GMAIL_TOKEN_JSON."
+            )
+
+            print(str(e))
+
+            return None
+
+    # -----------------------------------------------------
+    # Local Development
+    # -----------------------------------------------------
+
+    else:
+
+        token_file = getattr(
+            Config,
+            "GMAIL_TOKEN_FILE",
+            "token.json"
         )
 
-        print("========== RESEND RESPONSE ==========")
-        print("Status:", response.status_code)
-        print("Response:", response.text)
-        print("=====================================")
+        if not os.path.exists(token_file):
 
-        if response.status_code in (200, 201):
-            print("Email sent successfully.")
-            return True
+            print(
+                "ERROR: token.json not found."
+            )
 
-        print("Resend email error.")
-        return False
+            print(
+                "Run gmail_auth.py first."
+            )
 
-    except requests.RequestException as e:
-        print("Resend API connection error:")
+            return None
+
+        try:
+
+            creds = Credentials.from_authorized_user_file(
+                token_file,
+                SCOPES
+            )
+
+            print(
+                "Gmail credentials loaded from token.json."
+            )
+
+        except Exception as e:
+
+            print(
+                "ERROR: Could not load token.json."
+            )
+
+            print(str(e))
+
+            return None
+
+    # -----------------------------------------------------
+    # Refresh expired access token
+    # -----------------------------------------------------
+
+    try:
+
+        if creds.expired and creds.refresh_token:
+
+            print(
+                "Gmail access token expired."
+            )
+
+            print(
+                "Refreshing Gmail access token..."
+            )
+
+            creds.refresh(
+                Request()
+            )
+
+            print(
+                "Gmail access token refreshed."
+            )
+
+    except Exception as e:
+
+        print(
+            "ERROR: Gmail token refresh failed."
+        )
+
         print(str(e))
+
+        return None
+
+    return creds
+
+
+# =========================================================
+# SEND EMAIL USING GMAIL API
+# =========================================================
+
+def send_email(
+    mail,
+    to_email,
+    subject,
+    html_content
+):
+
+    print(
+        "\n========== GMAIL API EMAIL DEBUG =========="
+    )
+
+    print(
+        "Recipient:",
+        to_email
+    )
+
+    print(
+        "Subject:",
+        subject
+    )
+
+    print(
+        "==========================================="
+    )
+
+    # -----------------------------------------------------
+    # Load Gmail credentials
+    # -----------------------------------------------------
+
+    creds = _load_gmail_credentials()
+
+    if not creds:
+
+        print(
+            "ERROR: Gmail credentials are not available."
+        )
+
         return False
+
+    try:
+
+        # -------------------------------------------------
+        # Create Gmail API service
+        # -------------------------------------------------
+
+        service = build(
+            "gmail",
+            "v1",
+            credentials=creds,
+            cache_discovery=False
+        )
+
+        # -------------------------------------------------
+        # Create HTML email
+        # -------------------------------------------------
+
+        message = MIMEText(
+            html_content,
+            "html",
+            "utf-8"
+        )
+
+        message["To"] = to_email
+        message["Subject"] = subject
+
+        sender = (
+            os.environ.get("GMAIL_SENDER_EMAIL")
+            or getattr(
+                Config,
+                "GMAIL_SENDER_EMAIL",
+                ""
+            )
+        )
+
+        if sender:
+            message["From"] = sender
+
+        # -------------------------------------------------
+        # Encode email
+        # -------------------------------------------------
+
+        raw_message = base64.urlsafe_b64encode(
+            message.as_bytes()
+        ).decode()
+
+        body = {
+            "raw": raw_message
+        }
+
+        # -------------------------------------------------
+        # Send email
+        # -------------------------------------------------
+
+        result = (
+            service
+            .users()
+            .messages()
+            .send(
+                userId="me",
+                body=body
+            )
+            .execute()
+        )
+
+        print(
+            "========== GMAIL API RESPONSE =========="
+        )
+
+        print(
+            "Message ID:",
+            result.get("id")
+        )
+
+        print(
+            "Email sent successfully."
+        )
+
+        print(
+            "========================================="
+        )
+
+        return True
+
+    except Exception as e:
+
+        print(
+            "========== GMAIL API ERROR =========="
+        )
+
+        print(
+            "Email sending failed."
+        )
+
+        print(
+            "Error:",
+            str(e)
+        )
+
+        print(
+            "====================================="
+        )
+
+        return False
+
