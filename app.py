@@ -1,10 +1,10 @@
+
 import os
 import webbrowser
 
 from threading import Timer
 
 from flask import Flask, render_template, redirect, url_for
-from flask_mail import Mail
 
 from config import Config
 import db
@@ -22,6 +22,10 @@ def create_app():
 
     app.config.from_object(Config)
 
+    # -----------------------------------------------------
+    # Create required upload folders
+    # -----------------------------------------------------
+
     os.makedirs(
         Config.PROFILE_PICS_FOLDER,
         exist_ok=True
@@ -37,11 +41,15 @@ def create_app():
         exist_ok=True
     )
 
+    # -----------------------------------------------------
+    # Initialize database
+    # -----------------------------------------------------
+
     db.init_db()
 
-    mail = Mail(app)
-
-    app.extensions["mail"] = mail
+    # -----------------------------------------------------
+    # Register Blueprints
+    # -----------------------------------------------------
 
     app.register_blueprint(auth_bp)
 
@@ -53,6 +61,9 @@ def create_app():
 
     app.register_blueprint(history_bp)
 
+    # -----------------------------------------------------
+    # Home
+    # -----------------------------------------------------
 
     @app.route("/")
     def home():
@@ -61,6 +72,9 @@ def create_app():
             url_for("dashboard")
         )
 
+    # -----------------------------------------------------
+    # Dashboard
+    # -----------------------------------------------------
 
     @app.route("/dashboard")
     @login_required
@@ -73,6 +87,9 @@ def create_app():
             user=user
         )
 
+    # -----------------------------------------------------
+    # File Too Large
+    # -----------------------------------------------------
 
     @app.errorhandler(413)
     def file_too_large(error):
@@ -82,6 +99,9 @@ def create_app():
             message="File is too large. Maximum size is 20 MB."
         ), 413
 
+    # -----------------------------------------------------
+    # Page Not Found
+    # -----------------------------------------------------
 
     @app.errorhandler(404)
     def not_found(error):
@@ -91,23 +111,35 @@ def create_app():
             message="Page not found."
         ), 404
 
+    # -----------------------------------------------------
+    # Internal Server Error
+    # -----------------------------------------------------
 
     @app.errorhandler(500)
     def server_error(error):
 
-        app.logger.exception("Unhandled server error")
+        app.logger.exception(
+            "Unhandled server error"
+        )
 
         return render_template(
             "error.html",
             message="Something went wrong on our side. Please try again."
         ), 500
 
-
     return app
 
 
+# =========================================================
+# CREATE APPLICATION
+# =========================================================
+
 app = create_app()
 
+
+# =========================================================
+# LOCAL DEVELOPMENT
+# =========================================================
 
 if __name__ == "__main__":
 
